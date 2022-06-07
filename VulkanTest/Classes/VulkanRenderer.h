@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <vector>
 #include "Utilities.h"
+#include <set>
+#include <algorithm>
 
 class VulkanRenderer
 {
@@ -25,7 +27,16 @@ private:
 		VkDevice logicalDevice;
 	} mainDevice;
 
+
+	// main components
 	VkQueue graphicsQueue;
+	VkQueue presentationQueue;
+	VkSurfaceKHR surface;
+	VkSwapchainKHR swapchain;
+
+	//utility components
+	VkFormat swapChainImageFormat;
+	VkExtent2D swapChainExtent;
 
 	// vulkan functions
 	//================================================
@@ -33,6 +44,8 @@ private:
 	// Create functions
 	void createInstance();
 	void createLogicalDevice();
+	void createSurface();
+	void createSwapChain();
 
 	// get functions
 	void getPhysicalDevice();
@@ -42,10 +55,19 @@ private:
 
 	// checkfunctions
 	bool checkInstanceExtensionSupport(const std::vector<const char*>& checkExtensions);
+	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 	bool checkDeviceSuitable(VkPhysicalDevice device);
+
+	bool checkValidationLayerSupport();
+
+
+	VkSurfaceFormatKHR chooseBestSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
+	VkPresentModeKHR chooseBestPresentationMode(const std::vector<VkPresentModeKHR>& presentationModes);
+	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities);
 
 	//getter functions
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
+	SwapChainDetails getSwapChainDetails(VkPhysicalDevice device);
 
 private:
 	
@@ -53,4 +75,13 @@ private:
 	//================================================
 
 	VkInstance instance;
+
+
+	inline static std::vector<const char*> validationLayers { "VK_LAYER_KHRONOS_validation" };
+
+#ifdef SLEI_DEBUG
+	constexpr static bool enableValidationLayers = true;
+#else
+	constexpr static bool enableValidationLayers = false;
+#endif
 };

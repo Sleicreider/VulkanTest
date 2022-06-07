@@ -12,5 +12,5 @@ find_package(Vulkan REQUIRED)
 include_directories(${Vulkan_INCLUDE_DIRS} ${GFLW_INCLUDE})
 
 add_executable(${PROJECT_NAME} ${SOURCE} ${HEADER})
-set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD_20)
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 target_link_libraries(${PROJECT_NAME} ${Vulkan_LIBRARY} ${GFLW_LIBRARY})

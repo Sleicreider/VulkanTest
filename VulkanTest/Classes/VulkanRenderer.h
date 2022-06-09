@@ -34,6 +34,8 @@ private:
 	VkSurfaceKHR surface;
 	VkSwapchainKHR swapchain;
 
+	std::vector<SwapChainImage> swapChainImages;
+
 	//utility components
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
@@ -64,6 +66,8 @@ private:
 	VkSurfaceFormatKHR chooseBestSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
 	VkPresentModeKHR chooseBestPresentationMode(const std::vector<VkPresentModeKHR>& presentationModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities);
+
+	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
 	//getter functions
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);

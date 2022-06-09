@@ -28,6 +28,6 @@ struct SwapChainDetails
 
 struct SwapChainImage
 {
-	VkImageType image;
-	VkImageViewType imageView;
+	VkImage image;
+	VkImageView imageView;
 };

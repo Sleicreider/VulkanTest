@@ -6,6 +6,8 @@
 
 #include <fstream>
 
+constexpr const auto MAX_FRAME_DRAWS = 2;
+
 static inline const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 // indices (locations) of  Queue families (if they exist at all)

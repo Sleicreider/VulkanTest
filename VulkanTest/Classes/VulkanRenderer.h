@@ -16,6 +16,7 @@ public:
 	~VulkanRenderer() = default;
 
 	int init(GLFWwindow* newWindw);
+	void draw();
 	void cleanup();
 
 private:
@@ -36,15 +37,24 @@ private:
 	VkSwapchainKHR swapchain;
 
 	std::vector<SwapChainImage> swapChainImages;
+	std::vector<VkFramebuffer> swapChainFramebuffers;
+	std::vector<VkCommandBuffer> commandBuffers;
 
 	// pipeline
 	VkPipeline graphicsPipeline;
 	VkPipelineLayout pipelineLayout;
 	VkRenderPass renderPass;
 
+	// pools
+	VkCommandPool graphicsCommandPool;
+
 	//utility components
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
+
+	//synchronization
+	VkSemaphore imageAvailable;
+	VkSemaphore renderFinished;
 
 	// vulkan functions
 	//================================================
@@ -56,6 +66,13 @@ private:
 	void createSwapChain();
 	void createRenderPass();
 	void createGraphicsPipeline();
+	void createFramebuffers();
+	void createCommandPool();
+	void createCommandBuffers();
+	void createSynchronisation();
+
+	// record functions
+	void recordCommands();
 
 	// get functions
 	void getPhysicalDevice();
@@ -77,6 +94,7 @@ private:
 
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
+
 
 	//getter functions
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);

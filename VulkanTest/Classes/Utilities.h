@@ -14,6 +14,7 @@ static inline const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHA
 struct Vertex
 {
 	glm::vec3 pos;	//vertex position (x, y, z)
+	glm::vec3 col;	//vertex color (r, g ,b)
 
 };
 

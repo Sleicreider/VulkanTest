@@ -9,7 +9,7 @@ Mesh::Mesh(VkPhysicalDevice newPhysicalDevice, VkDevice newDevice, std::vector<V
 	vertexCount = vertices.size();
 	physicalDevice = newPhysicalDevice;
 	device = newDevice;
-	vertexBuffer = createVertexBuffer(vertices);
+	createVertexBuffer(vertices);
 }
 
 int Mesh::getVertexCount() const

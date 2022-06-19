@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <array>
 
+#include "Mesh.h"
+
 class VulkanRenderer
 {
 public:
@@ -21,6 +23,10 @@ public:
 
 private:
 	GLFWwindow* window;
+
+
+	// scene objects
+	Mesh firstMesh;
 
 
 private:

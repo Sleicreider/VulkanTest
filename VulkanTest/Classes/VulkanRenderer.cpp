@@ -14,6 +14,17 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		createSurface();
 		getPhysicalDevice();
 		createLogicalDevice();
+
+		// Create a mesh
+		std::vector<Vertex> meshVertices = 
+		{
+			{{0.0, -0.4, 0.0}},
+			{{0.4, 0.4, 0.0}},
+			{{-0.4, 0.4, 0.0}}
+		};
+
+		firstMesh = Mesh(mainDevice.physicalDevice, mainDevice.logicalDevice, meshVertices);
+
 		createSwapChain();
 		createRenderPass();
 		createGraphicsPipeline();
@@ -438,14 +449,33 @@ void VulkanRenderer::createGraphicsPipeline()
 	// put em into a array which is required for the graphics pipeline
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderCreateInfo, fragmentShaderCreateInfo };
 	
+	// how the data for a single vertex (including info such as pos, color texcoords, normals, etc) is as a whole
+	VkVertexInputBindingDescription bindingDescription{};
+	bindingDescription.binding = 0;					// can bind multiple streams of data, this defines which one
+	bindingDescription.stride = sizeof(Vertex);		// size of a single vertex object
+	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;	// how to move between data after each vertex
+																// vk_vertex_inuput_rate_vertex : move on to the next vertex
+																// vk_vertex_input_rate_instance : move to a vertex for the next instance
+
+	// how the data for an attribute is defined within a vertex
+	std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions;
+
+	//Position attribute
+	attributeDescriptions[0].binding = 0; // layout(binding=0, location=0) int vec3 pos; its the invisible binding feature | which binding the data is at (should be same as above unles you have more streams)
+	attributeDescriptions[0].location = 0; // location in the above mentioned location feature of the shader - location in shader where data will be read from
+	attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; // format the data will take (also helps define the size of the data)
+	attributeDescriptions[0].offset = offsetof(Vertex, pos);		// where this attribute is defined in the data for a signle vertex
+	
+	// color attribute
+
 
 	//Vertex Input
 	VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo{};
 	vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
-	vertexInputCreateInfo.pVertexBindingDescriptions = nullptr;	// list of vertex binding description (data spacing / stride information)
-	vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputCreateInfo.pVertexAttributeDescriptions = nullptr;  // list vertex attribute descroptions
+	vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
+	vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;	// list of vertex binding description (data spacing / stride information)
+	vertexInputCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescriptions.data();  // list vertex attribute descroptions
 
 	//input assembly
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};

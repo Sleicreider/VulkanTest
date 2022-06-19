@@ -5,8 +5,15 @@
 #endif
 
 #include <fstream>
+#include <glm/glm.hpp>
 
 static inline const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
+struct Vertex
+{
+	glm::vec3 pos;	//vertex position (x, y, z)
+
+};
 
 // indices (locations) of  Queue families (if they exist at all)
 struct QueueFamilyIndices

@@ -7,6 +7,8 @@
 #include <fstream>
 #include <glm/glm.hpp>
 
+constexpr const auto MAX_FRAME_DRAWS = 2;
+
 static inline const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 struct Vertex

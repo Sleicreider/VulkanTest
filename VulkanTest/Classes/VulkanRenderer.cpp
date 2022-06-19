@@ -14,22 +14,31 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		createSurface();
 		getPhysicalDevice();
 		createLogicalDevice();
-
-		// Create a mesh
-		std::vector<Vertex> meshVertices = 
-		{
-			{{0.4, -0.4, 0.0}, {1.f, 0.f, 0.f}},
-			{{0.4, 0.4, 0.0}, {0.f, 1.f, 0.f}} ,
-			{{-0.4, 0.4, 0.0}, {0.f, 0.f, 1.f}}
-		};
-
-		firstMesh = Mesh(mainDevice.physicalDevice, mainDevice.logicalDevice, meshVertices);
-
 		createSwapChain();
 		createRenderPass();
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
+
+		// Create a mesh
+
+		//vertex data
+		std::vector<Vertex> meshVertices =
+		{
+			{{0.4, -0.4, 0.0}, {1.f, 0.f, 0.f}}, //0
+			{{0.4, 0.4, 0.0}, {0.f, 1.f, 0.f}} , //1
+			{{-0.4, 0.4, 0.0}, {0.f, 0.f, 1.f}}, //2
+			{{-0.4, -0.4, 0.0}, {0.f, 1.f, 0.f}} , //3
+		};
+
+		// index data
+		std::vector<uint32_t> meshIndices = {
+			0, 1, 2,
+			2 ,3, 0
+		};
+
+		firstMesh = Mesh(mainDevice.physicalDevice, mainDevice.logicalDevice, graphicsQueue, graphicsCommandPool, meshVertices, meshIndices);
+
 		createCommandBuffers();
 		recordCommands();
 		createSynchronisation();
@@ -109,7 +118,7 @@ void VulkanRenderer::cleanup()
 	//wait until no actions being run on device before destroying
 	vkDeviceWaitIdle(mainDevice.logicalDevice);
 
-	firstMesh.destroyVertexBuffer();
+	firstMesh.destroyBuffers();
 
 	for (auto i = 0lu; i < MAX_FRAME_DRAWS; i++)
 	{
@@ -776,8 +785,11 @@ void VulkanRenderer::recordCommands()
 				VkDeviceSize offsets[] = { 0 };										// offsets into buffers being bound
 				vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);  // command to bind vertex buffer before with them
 
+				// bind mesh index buffer, with 0 offset and uisng uint32
+				vkCmdBindIndexBuffer(commandBuffers[i], firstMesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
 				//execute pipeline
-				vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(firstMesh.getVertexCount()), 1, 0, 0); // 3 vertices, 1 instance, start at vertex 0 and start at instance 0
+				vkCmdDrawIndexed(commandBuffers[i], firstMesh.getIndexCount(), 1, 0, 0, 0);
 			}
 
 			// end renderpass

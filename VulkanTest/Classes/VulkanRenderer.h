@@ -8,6 +8,8 @@
 #include <set>
 #include <algorithm>
 #include <array>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "Mesh.h"
 
@@ -18,6 +20,9 @@ public:
 	~VulkanRenderer() = default;
 
 	int init(GLFWwindow* newWindw);
+
+	void updateModel(glm::mat4 newModel);
+
 	void draw();
 	void cleanup();
 
@@ -63,6 +68,7 @@ private:
 	std::vector<VkDeviceMemory> uniformBufferMemory;
 
 	VkDescriptorPool descriptorPool;
+	std::vector<VkDescriptorSet> descriptorSets;
 
 	// pipeline
 	VkPipeline graphicsPipeline;
@@ -99,6 +105,10 @@ private:
 	
 	void createUniformBuffers();
 	void createDescriptorPool();
+	void createDescriptorSets();
+
+
+	void updateUniformBuffer(uint32_t imageIndex);
 
 	// record functions
 	void recordCommands();

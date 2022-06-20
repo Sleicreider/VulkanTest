@@ -21,6 +21,12 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		createFramebuffers();
 		createCommandPool();
 
+		mvp.projection = glm::perspective(glm::radians(45.f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.f, 100.f);
+		mvp.view = glm::lookAt(glm::vec3(0.f, 0.f, 2.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+		mvp.model = glm::mat4(1.f);
+
+		mvp.projection[1][1] *= -1;
+
 		// Create a mesh
 
 		//vertex data
@@ -55,6 +61,7 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		createCommandBuffers();
 		createUniformBuffers();
 		createDescriptorPool();
+		createDescriptorSets();
 		recordCommands();
 		createSynchronisation();
 	}
@@ -65,6 +72,11 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 	}
 
 	return 0;
+}
+
+void VulkanRenderer::updateModel(glm::mat4 newModel)
+{
+	mvp.model = newModel;
 }
 
 void VulkanRenderer::draw()
@@ -82,9 +94,12 @@ void VulkanRenderer::draw()
 	// manually reset (close) fences
 	vkResetFences(mainDevice.logicalDevice, 1, &drawFences[currentFrame]);
 
+
 	//get index of next image to be drawn to, and signal semaphore when ready to be drawn to
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(mainDevice.logicalDevice, swapchain, std::numeric_limits<uint64_t>::max(), imageAvailable[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+	updateUniformBuffer(imageIndex);
 
 	// submit command buffer to render
 	//queue submussion info
@@ -133,13 +148,13 @@ void VulkanRenderer::cleanup()
 	//wait until no actions being run on device before destroying
 	vkDeviceWaitIdle(mainDevice.logicalDevice);
 
+	vkDestroyDescriptorPool(mainDevice.logicalDevice, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(mainDevice.logicalDevice, descriptorSetLayout, nullptr);
 
 	for (auto i = 0lu; i < uniformBuffers.size(); i++)
 	{
 		vkDestroyBuffer(mainDevice.logicalDevice, uniformBuffers[i], nullptr);
 		vkFreeMemory(mainDevice.logicalDevice, uniformBufferMemory[i], nullptr);
-
 	}
 
 	for (auto& mesh : meshList)
@@ -611,7 +626,7 @@ void VulkanRenderer::createGraphicsPipeline()
 	rasterizerCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;	// how to handle filling points between vertices
 	rasterizerCreateInfo.lineWidth = 1.f;						// how thick lines should be when drawn
 	rasterizerCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;		// which face of a triangle to cull
-	rasterizerCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;	// winding to determine which side is front
+	rasterizerCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;	// winding to determine which side is front   //we inverted Y make CCW
 	rasterizerCreateInfo.depthBiasEnable = VK_FALSE;			// whether to add depth boas to fragments (good for stopping "shadow acne" in shadow mapping)
 
 
@@ -812,12 +827,77 @@ void VulkanRenderer::createUniformBuffers()
 
 void VulkanRenderer::createDescriptorPool()
 {
+	// type of descriptors + how many descriptors, not descriptor sets (combined makes the poolsize)
+	VkDescriptorPoolSize poolSize{};
+	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSize.descriptorCount = static_cast<uint32_t>(uniformBuffers.size());
+
+
 	// data to create descriptor pool
 	VkDescriptorPoolCreateInfo poolCreateInfo{};
 	poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolCreateInfo.maxSets = static_cast<uint32_t>(uniformBuffers.size());
+	poolCreateInfo.maxSets = static_cast<uint32_t>(uniformBuffers.size());		// maximum number of descriptor sets that can be created from pool
+	poolCreateInfo.poolSizeCount = 1;											// amount of pool sizes being passed
+	poolCreateInfo.pPoolSizes = &poolSize;										// pool sizes to create pool with
 
+	// create descriptor pool
+	auto result = vkCreateDescriptorPool(mainDevice.logicalDevice, &poolCreateInfo, nullptr, &descriptorPool);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create descriptor pool!");
+	}
+}
 
+void VulkanRenderer::createDescriptorSets()
+{
+	// resize descriptor set list so we have one for every buffer
+	descriptorSets.resize(uniformBuffers.size());
+
+	std::vector<VkDescriptorSetLayout> setLayouts(uniformBuffers.size(), descriptorSetLayout);
+
+	VkDescriptorSetAllocateInfo setAllocInfo{};
+	setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	setAllocInfo.descriptorPool = descriptorPool;				// pool to allocate descriptor set from
+	setAllocInfo.descriptorSetCount = static_cast<uint32_t>(uniformBuffers.size());			// number of sets to allocate
+	setAllocInfo.pSetLayouts = setLayouts.data();			// first descriptor set uses first element, second uses second element etc, all atm have descriptorSetLayout - layouts to use to allocate sets)
+
+	// allocate descriptor sets
+	auto result = vkAllocateDescriptorSets(mainDevice.logicalDevice, &setAllocInfo, descriptorSets.data());
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to allocate descriptor sets!");
+	}
+
+	// update all of descriptor set buffer bindings
+	for (auto i = 0lu; i < uniformBuffers.size(); i++)
+	{
+		// buffer info and data offset info
+		VkDescriptorBufferInfo mvpBufferInfo{};
+		mvpBufferInfo.buffer = uniformBuffers[i];			// buffer to get data from
+		mvpBufferInfo.offset = 0;							// position of start of data
+		mvpBufferInfo.range = sizeof(MVP);					// size of data
+
+		// data about connection between binding and buffer
+		VkWriteDescriptorSet mvpSetWrite{};
+		mvpSetWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		mvpSetWrite.dstSet = descriptorSets[i];	// descriptor set to update
+		mvpSetWrite.dstBinding = 0;				// layout(binding = 0) uniform MVP this here - binding to update
+		mvpSetWrite.dstArrayElement = 0;		// index in the array we want to update
+		mvpSetWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;		// type of descriptor
+		mvpSetWrite.descriptorCount = 1;		// amount to update
+		mvpSetWrite.pBufferInfo = &mvpBufferInfo;	// information about buffer data to bind
+
+		// update the descriptor sets with new buffer / binding info
+		vkUpdateDescriptorSets(mainDevice.logicalDevice, 1, &mvpSetWrite, 0, nullptr);
+	}
+}
+
+void VulkanRenderer::updateUniformBuffer(uint32_t imageIndex)
+{
+	void* data;
+	vkMapMemory(mainDevice.logicalDevice, uniformBufferMemory[imageIndex], 0, sizeof(MVP), 0, &data);
+	memcpy(data, &mvp, sizeof(MVP));
+	vkUnmapMemory(mainDevice.logicalDevice, uniformBufferMemory[imageIndex]);
 }
 
 void VulkanRenderer::recordCommands()
@@ -868,6 +948,10 @@ void VulkanRenderer::recordCommands()
 
 					// bind mesh index buffer, with 0 offset and uisng uint32
 					vkCmdBindIndexBuffer(commandBuffers[i], mesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+					// bind descriptor sets
+					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i],
+						0, nullptr);
 
 					//execute pipeline
 					vkCmdDrawIndexed(commandBuffers[i], mesh.getIndexCount(), 1, 0, 0, 0);
@@ -993,7 +1077,7 @@ bool VulkanRenderer::checkDeviceSuitable(VkPhysicalDevice device)
 	//VkPhysicalDeviceProperties deviceProperties;
 	//vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
-	////information about what the device can do (geo shader , tessalation shader, wide lines, etc)
+	////information about what the device can do (geo shader , tessellation shader, wide lines, etc)
 	//VkPhysicalDeviceFeatures deviceFeatures;
 	//vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 

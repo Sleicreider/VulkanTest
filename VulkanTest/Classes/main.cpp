@@ -39,10 +39,28 @@ int main()
 		return EXIT_FAILURE;
 	}
 
+	float angle = 0.f;
+	float deltaTime = 0.f;
+	float lastTime = 0.f;
+
 	//loop until close
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
+
+		float now = glfwGetTime();
+		deltaTime = now - lastTime;
+		lastTime = now;
+
+
+		angle += 10.f * deltaTime;
+		if (angle > 360.f)
+		{
+			angle -= 360.f;
+		}
+
+		vulkanRenderer.updateModel(glm::rotate(glm::mat4(1.f), glm::radians(angle), glm::vec3(0.f, 0.f, 1.f)));
+
 		vulkanRenderer.draw();
 	}
 

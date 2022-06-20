@@ -27,7 +27,8 @@ private:
 
 
 	// scene objects
-	Mesh firstMesh;
+	//Mesh firstMesh;
+	std::vector<Mesh> meshList;
 
 
 private:

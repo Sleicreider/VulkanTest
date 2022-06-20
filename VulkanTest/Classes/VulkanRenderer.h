@@ -30,6 +30,14 @@ private:
 	//Mesh firstMesh;
 	std::vector<Mesh> meshList;
 
+	// scene settings
+	struct MVP
+	{
+		glm::mat4 projection;
+		glm::mat4 view;
+		glm::mat4 model;
+	} mvp;
+
 
 private:
 	struct MainDevice {
@@ -47,6 +55,14 @@ private:
 	std::vector<SwapChainImage> swapChainImages;
 	std::vector<VkFramebuffer> swapChainFramebuffers;
 	std::vector<VkCommandBuffer> commandBuffers;
+
+	// - Descriptors
+	VkDescriptorSetLayout descriptorSetLayout;
+
+	std::vector<VkBuffer> uniformBuffers;
+	std::vector<VkDeviceMemory> uniformBufferMemory;
+
+	VkDescriptorPool descriptorPool;
 
 	// pipeline
 	VkPipeline graphicsPipeline;
@@ -74,11 +90,15 @@ private:
 	void createSurface();
 	void createSwapChain();
 	void createRenderPass();
+	void createDescriptorSetLayout();
 	void createGraphicsPipeline();
 	void createFramebuffers();
 	void createCommandPool();
 	void createCommandBuffers();
 	void createSynchronisation();
+	
+	void createUniformBuffers();
+	void createDescriptorPool();
 
 	// record functions
 	void recordCommands();

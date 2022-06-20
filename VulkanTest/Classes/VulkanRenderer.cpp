@@ -16,6 +16,7 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		createLogicalDevice();
 		createSwapChain();
 		createRenderPass();
+		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
@@ -52,6 +53,8 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		meshList.push_back(secondMesh);
 
 		createCommandBuffers();
+		createUniformBuffers();
+		createDescriptorPool();
 		recordCommands();
 		createSynchronisation();
 	}
@@ -129,6 +132,15 @@ void VulkanRenderer::cleanup()
 {
 	//wait until no actions being run on device before destroying
 	vkDeviceWaitIdle(mainDevice.logicalDevice);
+
+	vkDestroyDescriptorSetLayout(mainDevice.logicalDevice, descriptorSetLayout, nullptr);
+
+	for (auto i = 0lu; i < uniformBuffers.size(); i++)
+	{
+		vkDestroyBuffer(mainDevice.logicalDevice, uniformBuffers[i], nullptr);
+		vkFreeMemory(mainDevice.logicalDevice, uniformBufferMemory[i], nullptr);
+
+	}
 
 	for (auto& mesh : meshList)
 	{
@@ -461,6 +473,31 @@ void VulkanRenderer::createRenderPass()
 	}
 }
 
+void VulkanRenderer::createDescriptorSetLayout()
+{
+	// mvp binding info
+	VkDescriptorSetLayoutBinding mvpLayoutBinding{};
+	mvpLayoutBinding.binding = 0;				// layout(binding=0) in vert shader |binding point in sharder designated by bdining number in shader)
+	mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; // type of descriptor (uniform , dynamic uniform, image sampler, etc)
+	mvpLayoutBinding.descriptorCount = 1;					// number of descriptors for binding (atm only MVP)
+	mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;	//shader stage to bind to (vert in our case)
+	mvpLayoutBinding.pImmutableSamplers = nullptr;			// for texture: can make sampler unchangeable (immutable) by specifying layout
+
+
+	// create descriptor set layout with given bindings
+	VkDescriptorSetLayoutCreateInfo layoutCreateInfo{};
+	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutCreateInfo.bindingCount = 1;					// number of binding infos
+	layoutCreateInfo.pBindings = &mvpLayoutBinding;		// array of  binding infos
+
+	//create descriptor set layout
+	auto result = vkCreateDescriptorSetLayout(mainDevice.logicalDevice, &layoutCreateInfo, nullptr, &descriptorSetLayout);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Faild to create descriptor set layout!");
+	}
+}
+
 void VulkanRenderer::createGraphicsPipeline()
 {
 	//read in SPIR-V code of shaders
@@ -612,11 +649,11 @@ void VulkanRenderer::createGraphicsPipeline()
 	colorBlendingCreateInfo.pAttachments = &colorState;
 
 
-	// pipeline layout (todo: apply future descriptor set layouts)
+	// pipeline layout
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreateInfo.setLayoutCount = 0;
-	pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+	pipelineLayoutCreateInfo.setLayoutCount = 1;
+	pipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
@@ -754,6 +791,33 @@ void VulkanRenderer::createSynchronisation()
 			throw std::runtime_error("Failed to create semaphores / fences!");
 		}
 	}
+}
+
+void VulkanRenderer::createUniformBuffers()
+{
+	// buffer size will be size of all 3 variables (will offset to access)
+	VkDeviceSize bufferSize = sizeof(MVP);
+
+	//one uniform buffer for each image (and by extension, command buffer)
+	uniformBuffers.resize(swapChainImages.size());
+	uniformBufferMemory.resize(swapChainImages.size());
+
+	//create uniform buffers
+	for (auto i = 0lu; i < swapChainImages.size(); i++)
+	{
+		createBuffer(mainDevice.physicalDevice, mainDevice.logicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBufferMemory[i]);
+	}
+}
+
+void VulkanRenderer::createDescriptorPool()
+{
+	// data to create descriptor pool
+	VkDescriptorPoolCreateInfo poolCreateInfo{};
+	poolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolCreateInfo.maxSets = static_cast<uint32_t>(uniformBuffers.size());
+
+
 }
 
 void VulkanRenderer::recordCommands()

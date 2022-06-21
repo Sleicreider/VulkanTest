@@ -21,7 +21,7 @@ public:
 
 	int init(GLFWwindow* newWindw);
 
-	void updateModel(glm::mat4 newModel);
+	void updateModel(int modelId, glm::mat4 newModel);
 
 	void draw();
 	void cleanup();
@@ -63,11 +63,19 @@ private:
 	// - Descriptors
 	VkDescriptorSetLayout descriptorSetLayout;
 
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBufferMemory;
+	std::vector<VkBuffer> vpUniformBuffers;
+	std::vector<VkDeviceMemory> vpUniformBufferMemory;
+
+	std::vector<VkBuffer> modelDynUniformBuffers;
+	std::vector<VkDeviceMemory> modelDynUniformBufferMemory;
 
 	VkDescriptorPool descriptorPool;
 	std::vector<VkDescriptorSet> descriptorSets;
+
+	VkDeviceSize minUniformBufferOffset;
+	size_t modelUniformAlignment;
+
+	UboModel* modelTransferSpace;
 
 	// pipeline
 	VkPipeline graphicsPipeline;
@@ -80,9 +88,6 @@ private:
 	//utility components
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
-
-	VkDeviceSize minimumUniformBufferOffset;
-	size_t modelUniformAlignment;
 
 	//synchronization
 	std::vector<VkSemaphore> imageAvailable;
@@ -110,13 +115,16 @@ private:
 	void createDescriptorSets();
 
 
-	void updateUniformBuffer(uint32_t imageIndex);
+	void updateUniformBuffers(uint32_t imageIndex);
 
 	// record functions
 	void recordCommands();
 
 	// get functions
 	void getPhysicalDevice();
+
+	//allocate functions
+	void allocateDynamicBufferTransferSpace();
 
 
 	// Support functions

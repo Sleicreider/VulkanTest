@@ -81,6 +81,9 @@ private:
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
 
+	VkDeviceSize minimumUniformBufferOffset;
+	size_t modelUniformAlignment;
+
 	//synchronization
 	std::vector<VkSemaphore> imageAvailable;
 	std::vector<VkSemaphore> renderFinished;

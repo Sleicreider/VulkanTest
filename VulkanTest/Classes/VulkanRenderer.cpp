@@ -21,11 +21,10 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		createFramebuffers();
 		createCommandPool();
 
-		mvp.projection = glm::perspective(glm::radians(45.f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.f, 100.f);
-		mvp.view = glm::lookAt(glm::vec3(0.f, 0.f, 2.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
-		mvp.model = glm::mat4(1.f);
+		uboViewProjection.projection = glm::perspective(glm::radians(45.f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.f, 100.f);
+		uboViewProjection.view = glm::lookAt(glm::vec3(0.f, 0.f, 2.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
 
-		mvp.projection[1][1] *= -1;
+		uboViewProjection.projection[1][1] *= -1;
 
 		// Create a mesh
 
@@ -76,7 +75,7 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 
 void VulkanRenderer::updateModel(glm::mat4 newModel)
 {
-	mvp.model = newModel;
+	//uboViewProjection.model = newModel;
 }
 
 void VulkanRenderer::draw()
@@ -811,7 +810,7 @@ void VulkanRenderer::createSynchronisation()
 void VulkanRenderer::createUniformBuffers()
 {
 	// buffer size will be size of all 3 variables (will offset to access)
-	VkDeviceSize bufferSize = sizeof(MVP);
+	VkDeviceSize bufferSize = sizeof(UboViewProjection);
 
 	//one uniform buffer for each image (and by extension, command buffer)
 	uniformBuffers.resize(swapChainImages.size());
@@ -875,7 +874,7 @@ void VulkanRenderer::createDescriptorSets()
 		VkDescriptorBufferInfo mvpBufferInfo{};
 		mvpBufferInfo.buffer = uniformBuffers[i];			// buffer to get data from
 		mvpBufferInfo.offset = 0;							// position of start of data
-		mvpBufferInfo.range = sizeof(MVP);					// size of data
+		mvpBufferInfo.range = sizeof(UboViewProjection);					// size of data
 
 		// data about connection between binding and buffer
 		VkWriteDescriptorSet mvpSetWrite{};
@@ -895,8 +894,8 @@ void VulkanRenderer::createDescriptorSets()
 void VulkanRenderer::updateUniformBuffer(uint32_t imageIndex)
 {
 	void* data;
-	vkMapMemory(mainDevice.logicalDevice, uniformBufferMemory[imageIndex], 0, sizeof(MVP), 0, &data);
-	memcpy(data, &mvp, sizeof(MVP));
+	vkMapMemory(mainDevice.logicalDevice, uniformBufferMemory[imageIndex], 0, sizeof(UboViewProjection), 0, &data);
+	memcpy(data, &uboViewProjection, sizeof(UboViewProjection));
 	vkUnmapMemory(mainDevice.logicalDevice, uniformBufferMemory[imageIndex]);
 }
 

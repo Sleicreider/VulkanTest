@@ -36,12 +36,11 @@ private:
 	std::vector<Mesh> meshList;
 
 	// scene settings
-	struct MVP
+	struct UboViewProjection
 	{
 		glm::mat4 projection;
 		glm::mat4 view;
-		glm::mat4 model;
-	} mvp;
+	} uboViewProjection;
 
 
 private:

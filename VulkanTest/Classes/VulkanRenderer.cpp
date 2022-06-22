@@ -33,16 +33,16 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		std::vector<Vertex> meshVertices =
 		{
 			{{-0.4, 0.4, 0.0}, {1.f, 0.f, 0.f}}, //0
-			{{-0.4, -0.4, 0.0}, {0.f, 1.f, 0.f}} , //1
-			{{0.4, -0.4, 0.0}, {0.f, 0.f, 1.f}}, //2
-			{{0.4, 0.4, 0.0}, {0.f, 1.f, 0.f}} , //3
+			{{-0.4, -0.4, 0.0}, {1.f, 0.f, 0.f}} , //1
+			{{0.4, -0.4, 0.0}, {1.f, 0.f, 0.f}}, //2
+			{{0.4, 0.4, 0.0}, {1.f, 0.f, 0.f}} , //3
 		};
 
 		std::vector<Vertex> meshVertices2 =
 		{
-			{{-0.4, 0.25, 0.0}, {1.f, 0.f, 0.f}}, //0
+			{{-0.4, 0.25, 0.0}, {0.f, 1.f, 0.f}}, //0
 			{{-0.4, -0.25, 0.0}, {0.f, 1.f, 0.f}} , //1
-			{{0.4, -0.25, 0.0}, {0.f, 0.f, 1.f}}, //2
+			{{0.4, -0.25, 0.0}, {0.f, 1.f, 0.f}}, //2
 			{{0.4, 0.25, 0.0}, {0.f, 1.f, 0.f}} , //3
 		};
 
@@ -746,6 +746,11 @@ void VulkanRenderer::createGraphicsPipeline()
 	vkDestroyShaderModule(mainDevice.logicalDevice, vertexShaderModule, nullptr);
 }
 
+void VulkanRenderer::createDepthBufferImage()
+{
+
+}
+
 void VulkanRenderer::createFramebuffers()
 {
 	// resize to the amount of swapchainimages , we create 1 framebuffer per image
@@ -1295,6 +1300,23 @@ VkExtent2D VulkanRenderer::chooseSwapExtent(const VkSurfaceCapabilitiesKHR & sur
 	newExtent.height = std::max(surfaceCapabilities.minImageExtent.height, std::min(surfaceCapabilities.maxImageExtent.height, newExtent.height));
 
 	return newExtent;
+}
+
+VkImage VulkanRenderer::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageAspectFlags tiling, VkImageUsageFlags useFlags, VkMemoryPropertyFlags propFlags, VkDeviceMemory imageMemory)
+{
+	// create image
+	VkImageCreateInfo imageCreateInfo{};
+	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;		// 1d , 2d, 3d
+	imageCreateInfo.extent.width = width;
+	imageCreateInfo.extent.height = height;
+	imageCreateInfo.extent.depth = 1.f;			// depth of image extende (just 1, no 3d aspect)
+	imageCreateInfo.mipLevels = 1;				//number of mipmaplevels 
+	imageCreateInfo.arrayLayers = 1;			// number of leves in image array - cubemaps
+	imageCreateInfo.format = format;			// format type of image
+	imageCreateInfo.tiling = tiling;			// how image data should br tiled (arranged for optimal usage)
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // layout of image data on creation
+	imageCreateInfo.usage
 }
 
 VkImageView VulkanRenderer::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)

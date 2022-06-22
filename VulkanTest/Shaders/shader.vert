@@ -8,16 +8,20 @@ layout(binding = 0) uniform UboViewProjection{
 	mat4 view;
 } uboViewProjection;
 
-layout(binding = 1) uniform UboModel{
-	mat4 model;
-} uboModel;
+// legacy not in use
+//layout(binding = 1) uniform UboModel{
+//	mat4 model;
+//} uboModel;
 
+layout(push_constant) uniform PushModel{
+	mat4 model;
+}pushModel;
 
 layout(location = 0) out vec3 fragCol;
 
 void main()
 {
-	gl_Position = uboViewProjection.projection * uboViewProjection.view * uboModel.model * vec4(pos, 1.f);
+	gl_Position = uboViewProjection.projection * uboViewProjection.view * pushModel.model * vec4(pos, 1.f);
 	
 	fragCol = col;
 }

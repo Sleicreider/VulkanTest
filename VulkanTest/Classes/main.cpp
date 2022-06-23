@@ -7,7 +7,6 @@
 #include <GLFW/glfw3.h>
 
 #define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include <glm/glm.hpp>
 #include <glm/mat4x4.hpp>
@@ -64,11 +63,11 @@ int main()
 		glm::mat4 firstModel(1.f);
 		glm::mat4 secondModel(1.f);
 
-		firstModel = glm::translate(firstModel, glm::vec3(-.5f, 0.f, -0.1f));
-		firstModel = glm::rotate(firstModel, glm::radians(angle), glm::vec3(0.f, 0.f, 1.f));
+		firstModel = glm::translate(firstModel, glm::vec3(0.0f, 0.0f, -3.5f));
+		firstModel = glm::rotate(firstModel, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
 
-		secondModel = glm::translate(secondModel, glm::vec3(0.f, 0.f, -2.f));
-		secondModel = glm::rotate(secondModel, glm::radians(-angle * 100.f), glm::vec3(0.f, 0.f, 1.f));
+		secondModel = glm::translate(secondModel, glm::vec3(0.0f, 0.0f, -3.0f));
+		secondModel = glm::rotate(secondModel, glm::radians(-angle * 10), glm::vec3(0.0f, 0.0f, 1.0f));
 
 		vulkanRenderer.updateModel(0, firstModel);
 		vulkanRenderer.updateModel(1, secondModel);

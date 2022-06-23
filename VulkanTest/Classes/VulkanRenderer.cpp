@@ -27,8 +27,8 @@ int VulkanRenderer::init(GLFWwindow* newWindow)
 		createCommandPool();
 
 
-		uboViewProjection.projection = glm::perspective(glm::radians(45.f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.f, 100.f);
-		uboViewProjection.view = glm::lookAt(glm::vec3(0.f, 0.f, 2.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+		uboViewProjection.projection = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 100.0f);
+		uboViewProjection.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 		uboViewProjection.projection[1][1] *= -1;
 
@@ -736,7 +736,7 @@ void VulkanRenderer::createGraphicsPipeline()
 	// depth stencil testing
 	VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo{};
 	depthStencilCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencilCreateInfo.depthBoundsTestEnable = VK_TRUE;		// enable checking depth to determine fragment write
+	depthStencilCreateInfo.depthTestEnable = VK_TRUE;		// enable checking depth to determine fragment write
 	depthStencilCreateInfo.depthWriteEnable = VK_TRUE;			// enable writing to depth buffer to replace old values
 	depthStencilCreateInfo.depthCompareOp = VK_COMPARE_OP_LESS; // is new value less ? then replace - comparison operation that allows an overwrite (is in front)
 	depthStencilCreateInfo.depthBoundsTestEnable = VK_FALSE;	// depth bounds test: does the depth value exist between bounds

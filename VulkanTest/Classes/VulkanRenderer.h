@@ -63,6 +63,7 @@ private:
 	VkImage depthBufferImage;
 	VkDeviceMemory depthBufferMemory;
 	VkImageView depthBufferImageView;
+	VkFormat depthBufferFormat;
 
 	// - Descriptors
 	VkDescriptorSetLayout descriptorSetLayout;
@@ -121,6 +122,8 @@ private:
 	void createDescriptorPool();
 	void createDescriptorSets();
 
+	VkFormat getDepthBufferFormat();
+
 
 	void updateUniformBuffers(uint32_t imageIndex);
 
@@ -147,8 +150,9 @@ private:
 	VkSurfaceFormatKHR chooseBestSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
 	VkPresentModeKHR chooseBestPresentationMode(const std::vector<VkPresentModeKHR>& presentationModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities);
+	VkFormat chooseSupportedFormat(const std::vector<VkFormat>& formats, VkImageTiling tiling, VkFormatFeatureFlags featureFlags);
 
-	VkImage createImage(uint32_t width, uint32_t height, VkFormat format, VkImageAspectFlags tiling, VkImageUsageFlags useFlags, VkMemoryPropertyFlags propFlags, VkDeviceMemory imageMemory);
+	VkImage createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags useFlags, VkMemoryPropertyFlags propFlags, VkDeviceMemory& imageMemory);
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 

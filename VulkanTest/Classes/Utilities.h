@@ -137,22 +137,20 @@ static void createBuffer(VkPhysicalDevice physicalDevice, VkDevice device,VkDevi
 	vkBindBufferMemory(device, buffer, bufferMemory, 0);  // offset in memory is 0, we dont have anything else the using the memory where we would an offset for
 }
 
-
-static void copyBuffer(VkDevice device, VkQueue trasnferQueue, VkCommandPool transferCommandPool,
-	VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize bufferSize)
+static VkCommandBuffer beginCommandbuffer(VkDevice device, VkCommandPool commandPool)
 {
 	// command buffer to hold transfer commands
-	VkCommandBuffer transferCommandBuffer;
+	VkCommandBuffer commandBuffer;
 
 	//commandbuffer details
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = transferCommandPool;
+	allocInfo.commandPool = commandPool;
 	allocInfo.commandBufferCount = 1;
 
 	//allocate command buffer from pool
-	vkAllocateCommandBuffers(device, &allocInfo, &transferCommandBuffer);
+	vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
 
 
 	// info to begin the command buffer record
@@ -161,8 +159,36 @@ static void copyBuffer(VkDevice device, VkQueue trasnferQueue, VkCommandPool tra
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;		// we are only using the commandbuffer once, so set up for one time submit
 
 	// begin recording transfer commands
-	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
+	return commandBuffer;
+}
+
+static void endAndSubmitCommandbuffer(VkDevice device, VkCommandPool commandPool, VkQueue queue, VkCommandBuffer commandBuffer)
+{
+	// end commands
+	vkEndCommandBuffer(commandBuffer);
+
+	// queue submission information
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	//submit trasnfer command to transfer queue and wait until it finishes
+	vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(queue);
+
+	// free tmp command buffer back to pool
+	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+}
+
+static void copyBuffer(VkDevice device, VkQueue transferQueue, VkCommandPool transferCommandPool,
+	VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize bufferSize)
+{
+	// create buffer
+	VkCommandBuffer transferCommandBuffer = beginCommandbuffer(device, transferCommandPool);
+	
 	//region of data to copy from and to  (copy from start of src to start of dst (0)
 	VkBufferCopy bufferCopyRegion{};
 	bufferCopyRegion.srcOffset = 0;
@@ -172,20 +198,81 @@ static void copyBuffer(VkDevice device, VkQueue trasnferQueue, VkCommandPool tra
 	//command to copy src buffer to dst buffer
 	vkCmdCopyBuffer(transferCommandBuffer, srcBuffer, dstBuffer, 1, &bufferCopyRegion);
 
-	// end commands
-	vkEndCommandBuffer(transferCommandBuffer);
+	endAndSubmitCommandbuffer(device, transferCommandPool, transferQueue, transferCommandBuffer);
+}
+
+static void copyImageBuffer(VkDevice device, VkQueue transferQueue, VkCommandPool transferCommandPool, VkBuffer srcBuffer, VkImage image, uint32_t width, uint32_t height)
+{
+	VkCommandBuffer transferCommandBuffer = beginCommandbuffer(device, transferCommandPool);
+
+	VkBufferImageCopy imageRegion{};
+	imageRegion.bufferOffset = 0;						// offset into data
+	imageRegion.bufferRowLength = 0;					// data spacing - row length of data to calculate data spacing
+	imageRegion.bufferImageHeight = 0;					// image height to calculate data spacing
+	imageRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // which aspect of image to copy
+	imageRegion.imageSubresource.mipLevel = 0;			// mipmap level to copy
+	imageRegion.imageSubresource.baseArrayLayer = 0;	// starting array layer (if array)
+	imageRegion.imageSubresource.layerCount = 1;		// number of layers to copy, starting at base array layer
+	imageRegion.imageOffset = { 0, 0, 0 };				// offset into image (as opposed to raw data in bufferOffset) - start at origin 0,0,0
+	imageRegion.imageExtent = { width, height, 1 };		// size of region to copy as (x, y ,z)
+
+	// copy buffer to given image
+	vkCmdCopyBufferToImage(transferCommandBuffer, srcBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageRegion); // we used transfer_dst_bit
+
+	endAndSubmitCommandbuffer(device, transferCommandPool, transferQueue, transferCommandBuffer);
+}
+
+static void transitionImageLayout(VkDevice device, VkQueue queue, VkCommandPool commandPool, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout)
+{
+	VkCommandBuffer commandBuffer = beginCommandbuffer(device, commandPool);
+
+	VkImageMemoryBarrier imageMemoryBarrier{};
+	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	imageMemoryBarrier.oldLayout = oldLayout;								//transition from
+	imageMemoryBarrier.newLayout = newLayout;								//transition to
+	imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;		//dont transfer to different queue  - queue family to transition from
+	imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;		// queue family to transition to
+	imageMemoryBarrier.image = image;										// image being accessed and modified as part of barrier
+	imageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+	imageMemoryBarrier.subresourceRange.layerCount = 1;
+	imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	imageMemoryBarrier.subresourceRange.levelCount = 1;
+
+	VkPipelineStageFlags srcStage;
+	VkPipelineStageFlags dstStage;
+
+	//if transitioning from new image to image ready to received data
+	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+	{
+		imageMemoryBarrier.srcAccessMask = 0;							// must happen after (0 means anyhwere)
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; // must  happen before (write here) - copy buffertoimage is a transferwrite need to happen before, but start at any time (0)
+	
+		srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;				// anywere above on top of the pipeline
+		dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;					// before transfer write
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		//transition from transfer desitionation to shader readable
+
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;		// makes sure its ready before the fragment shader
+	}
+
+	vkCmdPipelineBarrier(commandBuffer,
+		//pipeline stages - match to src and dst accessmask above
+		srcStage,		// srcAccessMask with this stage must happen after
+		dstStage,		// dstaccessmas with this state must happen before
+		0,		// dependency flags
+		0, nullptr,	// memory barrier count and data
+		0, nullptr, // buffer memory barrier count and data
+		1, &imageMemoryBarrier // image memory barrier, count + data
+		);
 
 
-	// queue submission information
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &transferCommandBuffer;
+	endAndSubmitCommandbuffer(device, commandPool, queue, commandBuffer);
 
-	//submit trasnfer command to transfer queue and wait until it finishes
-	vkQueueSubmit(trasnferQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(trasnferQueue);
-
-	// free tmp command buffer back to pool
-	vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
 }

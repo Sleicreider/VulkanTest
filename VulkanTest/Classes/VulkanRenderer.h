@@ -162,7 +162,7 @@ private:
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
-	int createTexture(const std::sting& filename);
+	int createTexture(const std::string& filename);
 
 
 	//getter functions

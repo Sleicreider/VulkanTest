@@ -5,6 +5,8 @@ project(VulkanTest)
 file(GLOB_RECURSE SOURCE Classes/*.cpp)
 file(GLOB_RECURSE HEADER Classes/*.h)
 
+set(HEADER ${HEADER} "Thirdparty/stb_image.h")
+
 set(GFLW_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty/GLFW/lib-vc2019/glfw3.lib)
 set(GFLW_INCLUDE "Thirdparty/GLFW/include")
 find_package(Vulkan REQUIRED)

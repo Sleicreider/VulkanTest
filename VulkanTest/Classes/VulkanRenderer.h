@@ -13,6 +13,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Mesh.h"
+#include "../Thirdparty/stb_image.h"
 
 class VulkanRenderer
 {
@@ -83,6 +84,10 @@ private:
 		size_t modelUniformAlignment;*/
 
 	//Model* modelTransferSpace;
+
+	//Assets
+	std::vector<VkImage> textureImages;
+	std::vector<VkDeviceMemory> textureImageMemory; //  could use one wiht offsets
 
 	// pipeline
 	VkPipeline graphicsPipeline;
@@ -157,10 +162,17 @@ private:
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
+	int createTexture(const std::sting& filename);
+
 
 	//getter functions
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
 	SwapChainDetails getSwapChainDetails(VkPhysicalDevice device);
+
+
+	//loading
+
+	stbi_uc* loadTextureFile(const std::string& filename, int& width, int& height, VkDeviceSize& imageSize);
 
 private:
 	

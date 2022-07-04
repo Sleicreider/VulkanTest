@@ -1479,6 +1479,38 @@ VkShaderModule VulkanRenderer::createShaderModule(const std::vector<char>& code)
 	return shaderModule;
 }
 
+int VulkanRenderer::createTexture(const std::sting& filename)
+{
+	int width, height;
+	VkDeviceSize imageSize;
+	stbi_uc* imageData = loadTextureFile(filename, width, height, imageSize);
+
+
+	//create staging buffer to hold loaded data, ready to copy to device
+	VkBuffer imageStagingBuffer;
+	VkDeviceMemory imageStagingBufferMemory;
+	createBuffer(mainDevice.physicalDevice, mainDevice.logicalDevice, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &imageStagingBuffer, &imageStagingBufferMemory);
+
+	void *data;
+	vkMapMemory(mainDevice.logicalDevice, imageStagingBufferMemory, 0, imageSize, 0, &data);
+	memcpy(data, imageData, static_cast<size_t>(imageSize));
+	vkUnmapMemory(mainDevice.logicalDevice, imageStagingBufferMemory);
+
+	//Free original image data
+	stbi_image_free(imageData);
+
+
+	// create image to hold final data
+	VkImage texImage;
+	VkDeviceMemory textureImageMemory;
+
+	texImage = createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &textureImageMemory);
+	
+
+}
+
 QueueFamilyIndices VulkanRenderer::getQueueFamilies(VkPhysicalDevice device)
 {
 	QueueFamilyIndices indices;
@@ -1555,4 +1587,25 @@ SwapChainDetails VulkanRenderer::getSwapChainDetails(VkPhysicalDevice device)
 	}
 
 	return swapChainDetails;
+}
+
+stbi_uc* VulkanRenderer::loadTextureFile(const std::string& filename, int& width, int& height, VkDeviceSize& imageSize)
+{
+	// number of channels image uses
+	int channels;
+
+	//load pixel data for image
+	std::string fileloc = "Textures/" + filename;
+	stbi_uc* image = stbi_load(fileloc.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+
+	if (!image)
+	{
+		throw std::runtime_error("Failed to load texture file " + filename);
+	}
+
+	//calculate image size using given and known data
+	constexpr static const auto channelSize = 4;
+	imageSize = width * height * channelSize;
+
+	return image;
 }
